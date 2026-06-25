@@ -20,7 +20,7 @@ export function ChannelList({
   const dms = channels.filter((c) => c.tipo === "dm");
 
   return (
-    <div className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-line bg-card">
+    <div className="flex w-full shrink-0 flex-col overflow-y-auto border-r border-line bg-card lg:w-64">
       <Group titulo="Canales">
         {canales.map((c) => {
           const activo = c.id === activoId;

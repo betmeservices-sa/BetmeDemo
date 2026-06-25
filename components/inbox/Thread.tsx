@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Check, UserPlus } from "lucide-react";
+import { Check, ChevronLeft, Info, UserPlus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { depto } from "@/lib/format";
 import { Avatar, inicialesDe } from "@/components/ui/Avatar";
@@ -19,6 +19,8 @@ export function Thread({
   onSend,
   onAsignarme,
   onResolver,
+  onBack,
+  onInfo,
 }: {
   conversation: Conversation;
   contact: Contact;
@@ -27,6 +29,8 @@ export function Thread({
   onSend: (texto: string) => void;
   onAsignarme: () => void;
   onResolver: () => void;
+  onBack?: () => void;
+  onInfo?: () => void;
 }) {
   const finRef = useRef<HTMLDivElement>(null);
   const d = depto(conversation.departamento);
@@ -39,7 +43,15 @@ export function Thread({
     <div className="flex h-full min-w-0 flex-col bg-surface">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 border-b border-line bg-card px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Volver"
+            className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#5b6b80] hover:bg-surface lg:hidden"
+          >
+            <ChevronLeft size={22} />
+          </button>
           <Avatar iniciales={inicialesDe(contact.nombre)} size={40} color={d.color} />
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-[#0f1b2d]">{contact.nombre}</p>
@@ -53,30 +65,44 @@ export function Thread({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <StatusPill estado={conversation.estado} />
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <span className="hidden sm:inline-flex">
+            <StatusPill estado={conversation.estado} />
+          </span>
           {!esMia && (
             <button
               type="button"
               onClick={onAsignarme}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-[#5b6b80] transition hover:border-brand hover:text-brand"
+              aria-label="Asignarme"
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-2 py-1.5 text-[12.5px] font-semibold text-[#5b6b80] transition hover:border-brand hover:text-brand sm:px-2.5"
             >
               <UserPlus size={15} />
-              Asignarme
+              <span className="hidden sm:inline">Asignarme</span>
             </button>
           )}
           <button
             type="button"
             onClick={onResolver}
+            aria-label="Resolver"
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold transition",
+              "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-semibold transition sm:px-2.5",
               conversation.estado === "resuelto"
                 ? "bg-emerald-50 text-[#2f9e2f]"
                 : "bg-brand text-white hover:bg-brand-dark",
             )}
           >
             <Check size={15} />
-            {conversation.estado === "resuelto" ? "Resuelta" : "Resolver"}
+            <span className="hidden sm:inline">
+              {conversation.estado === "resuelto" ? "Resuelta" : "Resolver"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onInfo}
+            aria-label="Información del paciente"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#5b6b80] hover:bg-surface lg:hidden"
+          >
+            <Info size={18} />
           </button>
         </div>
       </div>

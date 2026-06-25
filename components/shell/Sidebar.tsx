@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Inbox, Megaphone, MessagesSquare, type LucideIcon } from "lucide-react";
+import { BarChart3, Inbox, Megaphone, MessagesSquare, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useRole, type ModuleId } from "@/lib/roles";
 import { staff, ME } from "@/lib/data/seed";
@@ -24,7 +24,13 @@ const NAV: NavItem[] = [
   { id: "dashboard", href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  open = false,
+  onClose,
+}: {
+  open?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
   const { def } = useRole();
   const yo = staff.find((s) => s.id === ME)!;
@@ -32,9 +38,22 @@ export function Sidebar() {
   const visibles = NAV.filter((item) => def.ve.includes(item.id));
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-line bg-card">
-      <div className="border-b border-line px-4 py-4">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-card transition-transform lg:static lg:z-auto lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+      )}
+    >
+      <div className="flex items-center justify-between border-b border-line px-4 py-4">
         <Brand />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar menú"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-[#94a3b4] hover:bg-surface lg:hidden"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -44,6 +63,7 @@ export function Sidebar() {
             <Link
               key={id}
               href={href}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
                 active

@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone, AtSign, StickyNote, Building2, UserCheck, Activity } from "lucide-react";
+import { Phone, AtSign, StickyNote, Building2, UserCheck, Activity, X } from "lucide-react";
 import { departments, staff } from "@/lib/data/seed";
 import { depto } from "@/lib/format";
 import { Avatar, inicialesDe } from "@/components/ui/Avatar";
@@ -24,17 +24,29 @@ export function ContextPanel({
   onAsignar,
   onEstado,
   onDepartamento,
+  onClose,
 }: {
   conversation: Conversation;
   contact: Contact;
   onAsignar: (staffId: string) => void;
   onEstado: (estado: ConversationStatus) => void;
   onDepartamento: (deptId: DepartmentId) => void;
+  onClose?: () => void;
 }) {
   const d = depto(conversation.departamento);
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-l border-line bg-card px-4 py-5">
+    <aside className="relative flex h-full w-full shrink-0 flex-col gap-4 overflow-y-auto border-l border-line bg-card px-4 py-5 lg:w-72">
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-[#94a3b4] hover:bg-surface lg:hidden"
+        >
+          <X size={18} />
+        </button>
+      )}
       <div className="flex flex-col items-center text-center">
         <Avatar iniciales={inicialesDe(contact.nombre)} size={64} color={d.color} />
         <p className="mt-2.5 text-[15px] font-bold text-[#0f1b2d]">{contact.nombre}</p>

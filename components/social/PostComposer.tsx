@@ -23,7 +23,7 @@ export function PostComposer({
   }
 
   return (
-    <div className="w-80 shrink-0 border-r border-line bg-card p-4">
+    <div className="w-full shrink-0 border-b border-line bg-card p-4 lg:w-80 lg:border-b-0 lg:border-r">
       <h2 className="mb-3 text-sm font-bold text-[#0f1b2d]">Nueva publicación</h2>
 
       <div className="mb-3 flex gap-2">

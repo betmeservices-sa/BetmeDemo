@@ -19,7 +19,7 @@ export default function RedesPage() {
         </p>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <PostComposer
           onProgramar={(red, texto, fecha) =>
             dispatch({ type: "ADD_SOCIAL_POST", red, texto, fecha })

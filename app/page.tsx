@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MessageSquareDashed } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { useStore } from "@/lib/store";
 import { ME } from "@/lib/data/seed";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -23,6 +24,7 @@ export default function BandejaPage() {
   const { state, dispatch } = useStore();
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [activaId, setActivaId] = useState<string | null>(null);
+  const [ctxOpen, setCtxOpen] = useState(false); // panel de contexto en móvil
 
   const contactoDe = useMemo(
     () => new Map(state.contacts.map((c) => [c.id, c])),
@@ -75,8 +77,13 @@ export default function BandejaPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Top bar */}
-      <header className="flex items-center justify-between border-b border-line bg-card px-5 py-3">
+      {/* Top bar (se oculta en móvil cuando hay una conversación abierta) */}
+      <header
+        className={cn(
+          "items-center justify-between border-b border-line bg-card px-5 py-3 lg:flex",
+          activa ? "hidden lg:flex" : "flex",
+        )}
+      >
         <div>
           <h1 className="text-[17px] font-extrabold tracking-tight text-[#0f1b2d]">
             Bandeja unificada
@@ -90,23 +97,28 @@ export default function BandejaPage() {
 
       <div className="flex min-h-0 flex-1">
         {/* Columna 1: lista */}
-        <section className="flex w-[340px] shrink-0 flex-col border-r border-line bg-card">
+        <section
+          className={cn(
+            "shrink-0 flex-col border-r border-line bg-card lg:flex lg:w-[340px]",
+            activa ? "hidden" : "flex w-full",
+          )}
+        >
           <InboxFilters filtros={filtros} onChange={setFiltros} />
           <ConversationList items={items} activaId={activaId} onSelect={seleccionar} />
         </section>
 
         {/* Columna 2: hilo */}
-        <section className="min-w-0 flex-1">
+        <section className={cn("min-w-0 flex-1 flex-col", activa ? "flex" : "hidden lg:flex")}>
           {activa && contactoActivo ? (
             <Thread
               conversation={activa}
               contact={contactoActivo}
               messages={mensajesActivos}
               esMia={activa.asignadoA === ME}
+              onBack={() => setActivaId(null)}
+              onInfo={() => setCtxOpen(true)}
               onSend={(texto) => {
-                // Optimista: lo mostramos de una en el hilo.
                 dispatch({ type: "SEND_MESSAGE", conversationId: activa.id, texto, staffId: ME });
-                // Si la conversación es de WhatsApp, lo enviamos de verdad por la Cloud API.
                 if (activa.canal === "whatsapp" && contactoActivo.telefono) {
                   fetch("/api/whatsapp/send", {
                     method: "POST",
@@ -140,23 +152,48 @@ export default function BandejaPage() {
           )}
         </section>
 
-        {/* Columna 3: contexto */}
+        {/* Columna 3: contexto (estática en desktop) */}
         {activa && contactoActivo && (
-          <ContextPanel
-            conversation={activa}
-            contact={contactoActivo}
-            onAsignar={(staffId) =>
-              dispatch({ type: "ASSIGN", conversationId: activa.id, staffId })
-            }
-            onEstado={(estado: ConversationStatus) =>
-              dispatch({ type: "SET_STATUS", conversationId: activa.id, estado })
-            }
-            onDepartamento={(departamento: DepartmentId) =>
-              dispatch({ type: "SET_DEPARTMENT", conversationId: activa.id, departamento })
-            }
-          />
+          <div className="hidden lg:flex">
+            <ContextPanel
+              conversation={activa}
+              contact={contactoActivo}
+              onAsignar={(staffId) =>
+                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId })
+              }
+              onEstado={(estado: ConversationStatus) =>
+                dispatch({ type: "SET_STATUS", conversationId: activa.id, estado })
+              }
+              onDepartamento={(departamento: DepartmentId) =>
+                dispatch({ type: "SET_DEPARTMENT", conversationId: activa.id, departamento })
+              }
+            />
+          </div>
         )}
       </div>
+
+      {/* Panel de contexto como slide-over en móvil */}
+      {activa && contactoActivo && ctxOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCtxOpen(false)} aria-hidden />
+          <div className="absolute inset-y-0 right-0 w-[86%] max-w-xs shadow-xl">
+            <ContextPanel
+              conversation={activa}
+              contact={contactoActivo}
+              onClose={() => setCtxOpen(false)}
+              onAsignar={(staffId) =>
+                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId })
+              }
+              onEstado={(estado: ConversationStatus) =>
+                dispatch({ type: "SET_STATUS", conversationId: activa.id, estado })
+              }
+              onDepartamento={(departamento: DepartmentId) =>
+                dispatch({ type: "SET_DEPARTMENT", conversationId: activa.id, departamento })
+              }
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Hash } from "lucide-react";
+import { ChevronLeft, Hash } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Composer } from "@/components/inbox/Composer";
 import { horaDe, staffMeta } from "@/lib/format";
@@ -12,10 +12,12 @@ export function InternalThread({
   channel,
   messages,
   onSend,
+  onBack,
 }: {
   channel: InternalChannel;
   messages: InternalMessage[];
   onSend: (texto: string) => void;
+  onBack?: () => void;
 }) {
   const finRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +30,14 @@ export function InternalThread({
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col bg-surface">
       <div className="flex items-center gap-2 border-b border-line bg-card px-4 py-3.5">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Volver"
+          className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#5b6b80] hover:bg-surface lg:hidden"
+        >
+          <ChevronLeft size={22} />
+        </button>
         {channel.tipo === "canal" && <Hash size={18} className="text-[#94a3b4]" />}
         <p className="text-sm font-bold text-[#0f1b2d]">{titulo}</p>
         <span className="text-[12px] text-[#94a3b4]">· {channel.miembros.length} miembros</span>

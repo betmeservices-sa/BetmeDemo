@@ -29,7 +29,7 @@ const GRUPOS = [
 
 export function PostList({ posts }: { posts: SocialPost[] }) {
   return (
-    <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+    <div className="flex-1 space-y-6 px-5 py-5 lg:overflow-y-auto">
       {GRUPOS.map(({ estado, titulo, Icon, tone }) => {
         const grupo = posts.filter((p) => p.estado === estado);
         if (grupo.length === 0) return null;
