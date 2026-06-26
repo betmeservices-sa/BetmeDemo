@@ -22,6 +22,8 @@ export function Thread({
   onBack,
   onInfo,
   onTyping,
+  onReact,
+  onAttach,
 }: {
   conversation: Conversation;
   contact: Contact;
@@ -33,6 +35,8 @@ export function Thread({
   onBack?: () => void;
   onInfo?: () => void;
   onTyping?: () => void;
+  onReact?: (messageId: string, emoji: string) => void;
+  onAttach?: (file: File) => void | Promise<void>;
 }) {
   const finRef = useRef<HTMLDivElement>(null);
   const d = depto(conversation.departamento);
@@ -101,7 +105,7 @@ export function Thread({
           <button
             type="button"
             onClick={onInfo}
-            aria-label="Información del paciente"
+            aria-label="Informacion del paciente"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-[#5b6b80] hover:bg-surface lg:hidden"
           >
             <Info size={18} />
@@ -112,12 +116,17 @@ export function Thread({
       {/* Mensajes */}
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {messages.map((m, i) => (
-          <MessageBubble key={m.id} message={m} isNew={i === messages.length - 1} />
+          <MessageBubble
+            key={m.id}
+            message={m}
+            isNew={i === messages.length - 1}
+            onReact={onReact}
+          />
         ))}
         <div ref={finRef} />
       </div>
 
-      <Composer onSend={onSend} onTyping={onTyping} />
+      <Composer onSend={onSend} onTyping={onTyping} onAttach={onAttach} />
     </div>
   );
 }

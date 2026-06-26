@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { fakeProvider } from "./data/provider";
+import { telefonoBonito } from "./phone";
 import type {
   Contact,
   Conversation,
@@ -50,6 +51,14 @@ export type StoreAction =
       texto: string;
       ts: string;
       direccion?: "in" | "out";
+    }
+  | {
+      // Rehidrata asignado/estado/departamento de la BD al montar.
+      type: "HIDRATAR_CONVERSACION";
+      wa_from: string;
+      asignado_a: string | null;
+      estado: string | null;
+      departamento: string | null;
     };
 
 function pad(n: number): string {
@@ -245,7 +254,8 @@ export function storeReducer(state: StoreState, action: StoreAction): StoreState
         const contactId = `wa-${action.from}`;
         const nuevoContacto: Contact = {
           id: contactId,
-          nombre: action.nombre || `+${action.from}`,
+          // Muestra "7629-4980" en vez de "+50376294980" cuando no hay nombre.
+          nombre: action.nombre || telefonoBonito(action.from),
           telefono: action.from,
           canal: "whatsapp",
         };
@@ -274,6 +284,24 @@ export function storeReducer(state: StoreState, action: StoreAction): StoreState
       };
 
       return { ...state, contacts, conversations, messages: [...state.messages, msg] };
+    }
+    case "HIDRATAR_CONVERSACION": {
+      // Solo aplica si la conversación ya existe en el store (creada por WHATSAPP_INCOMING).
+      const convId = `wac-${action.wa_from}`;
+      const existe = state.conversations.some((c) => c.id === convId);
+      if (!existe) return state;
+      return {
+        ...state,
+        conversations: state.conversations.map((c) => {
+          if (c.id !== convId) return c;
+          const updates: Partial<Conversation> = {};
+          // null = desasignar explicitamente; los enums solo se aplican si vienen.
+          if (action.asignado_a !== undefined) updates.asignadoA = action.asignado_a ?? undefined;
+          if (action.estado != null) updates.estado = action.estado as ConversationStatus;
+          if (action.departamento != null) updates.departamento = action.departamento as Conversation["departamento"];
+          return { ...c, ...updates };
+        }),
+      };
     }
     default:
       return state;

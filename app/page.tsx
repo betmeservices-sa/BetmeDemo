@@ -21,18 +21,31 @@ const FILTROS_INICIALES: Filtros = {
   departamento: "todos",
 };
 
+// Helper: persiste cambios de conversacion WhatsApp en la BD.
+async function persistirWa(wa_from: string, payload: Record<string, string | null>) {
+  try {
+    await fetch("/api/wa/conversaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wa_from, ...payload }),
+    });
+  } catch {
+    // silencioso: el dato ya esta en el store local
+  }
+}
+
 export default function BandejaPage() {
   const { state, dispatch } = useStore();
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [activaId, setActivaId] = useState<string | null>(null);
-  const [ctxOpen, setCtxOpen] = useState(false); // panel de contexto en móvil
+  const [ctxOpen, setCtxOpen] = useState(false); // panel de contexto en movil
 
   const contactoDe = useMemo(
     () => new Map(state.contacts.map((c) => [c.id, c])),
     [state.contacts],
   );
 
-  // Último mensaje por conversación.
+  // Ultimo mensaje por conversacion.
   const ultimoDe = useMemo(() => {
     const m = new Map<string, (typeof state.messages)[number]>();
     for (const msg of state.messages) {
@@ -78,7 +91,7 @@ export default function BandejaPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Top bar (se oculta en móvil cuando hay una conversación abierta) */}
+      {/* Top bar (se oculta en movil cuando hay una conversacion abierta) */}
       <header
         className={cn(
           "items-center justify-between border-b border-line bg-card px-5 py-3 lg:flex",
@@ -136,7 +149,7 @@ export default function BandejaPage() {
               }}
               onSend={async (texto) => {
                 // WhatsApp: enviamos primero por la Cloud API; si sale bien,
-                // agregamos el mensaje con el id real (así no se duplica con lo
+                // agregamos el mensaje con el id real (asi no se duplica con lo
                 // que el webhook persiste) y el endpoint lo guarda en la base.
                 if (activa.canal === "whatsapp" && contactoActivo.telefono) {
                   const r = await fetch("/api/whatsapp/send", {
@@ -146,8 +159,8 @@ export default function BandejaPage() {
                   });
                   const d = await r.json().catch(() => ({ ok: false }));
                   if (!d.ok) {
-                    console.error("WhatsApp send falló:", d.error);
-                    throw new Error(d.error ?? "Falló el envío");
+                    console.error("WhatsApp send fallo:", d.error);
+                    throw new Error(d.error ?? "Fallo el envio");
                   }
                   dispatch({
                     type: "SEND_MESSAGE",
@@ -160,47 +173,104 @@ export default function BandejaPage() {
                 }
                 dispatch({ type: "SEND_MESSAGE", conversationId: activa.id, texto, staffId: ME });
               }}
-              onAsignarme={() =>
-                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId: ME })
-              }
-              onResolver={() =>
+              onReact={async (messageId, emoji) => {
+                // Solo aplica a conversaciones de WhatsApp.
+                if (activa.canal !== "whatsapp" || !contactoActivo.telefono) return;
+                try {
+                  await fetch("/api/whatsapp/react", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ to: contactoActivo.telefono, messageId, emoji }),
+                  });
+                } catch (err) {
+                  console.error("react error:", err);
+                }
+              }}
+              onAttach={async (file) => {
+                // Solo aplica a conversaciones de WhatsApp.
+                if (activa.canal !== "whatsapp" || !contactoActivo.telefono) return;
+                const fd = new FormData();
+                fd.append("to", contactoActivo.telefono);
+                fd.append("file", file);
+                fd.append("caption", "");
+                try {
+                  const r = await fetch("/api/whatsapp/send-media", { method: "POST", body: fd });
+                  const d = await r.json().catch(() => ({ ok: false }));
+                  if (d.ok) {
+                    dispatch({
+                      type: "SEND_MESSAGE",
+                      conversationId: activa.id,
+                      texto: file.type.startsWith("image/")
+                        ? "[imagen enviada]"
+                        : `[documento: ${file.name}]`,
+                      staffId: ME,
+                      waId: d.id,
+                    });
+                  } else {
+                    console.error("send-media fallo:", d);
+                  }
+                } catch (err) {
+                  console.error("send-media error:", err);
+                }
+              }}
+              onAsignarme={() => {
+                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId: ME });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { asignado_a: ME });
+                }
+              }}
+              onResolver={() => {
+                const nuevoEstado =
+                  activa.estado === "resuelto" ? "en_progreso" : "resuelto";
                 dispatch({
                   type: "SET_STATUS",
                   conversationId: activa.id,
-                  estado: activa.estado === "resuelto" ? "en_progreso" : "resuelto",
-                })
-              }
+                  estado: nuevoEstado,
+                });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { estado: nuevoEstado });
+                }
+              }}
             />
           ) : (
             <EmptyState
               Icon={MessageSquareDashed}
-              titulo="Selecciona una conversación"
-              descripcion="Elige un mensaje de la lista para ver y responder la conversación."
+              titulo="Selecciona una conversacion"
+              descripcion="Elige un mensaje de la lista para ver y responder la conversacion."
             />
           )}
         </section>
 
-        {/* Columna 3: contexto (estática en desktop) */}
+        {/* Columna 3: contexto (estatica en desktop) */}
         {activa && contactoActivo && (
           <div className="hidden lg:flex">
             <ContextPanel
               conversation={activa}
               contact={contactoActivo}
-              onAsignar={(staffId) =>
-                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId })
-              }
-              onEstado={(estado: ConversationStatus) =>
-                dispatch({ type: "SET_STATUS", conversationId: activa.id, estado })
-              }
-              onDepartamento={(departamento: DepartmentId) =>
-                dispatch({ type: "SET_DEPARTMENT", conversationId: activa.id, departamento })
-              }
+              onAsignar={(staffId) => {
+                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { asignado_a: staffId || null });
+                }
+              }}
+              onEstado={(estado: ConversationStatus) => {
+                dispatch({ type: "SET_STATUS", conversationId: activa.id, estado });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { estado });
+                }
+              }}
+              onDepartamento={(departamento: DepartmentId) => {
+                dispatch({ type: "SET_DEPARTMENT", conversationId: activa.id, departamento });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { departamento });
+                }
+              }}
             />
           </div>
         )}
       </div>
 
-      {/* Panel de contexto como slide-over en móvil */}
+      {/* Panel de contexto como slide-over en movil */}
       {activa && contactoActivo && ctxOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setCtxOpen(false)} aria-hidden />
@@ -209,15 +279,24 @@ export default function BandejaPage() {
               conversation={activa}
               contact={contactoActivo}
               onClose={() => setCtxOpen(false)}
-              onAsignar={(staffId) =>
-                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId })
-              }
-              onEstado={(estado: ConversationStatus) =>
-                dispatch({ type: "SET_STATUS", conversationId: activa.id, estado })
-              }
-              onDepartamento={(departamento: DepartmentId) =>
-                dispatch({ type: "SET_DEPARTMENT", conversationId: activa.id, departamento })
-              }
+              onAsignar={(staffId) => {
+                dispatch({ type: "ASSIGN", conversationId: activa.id, staffId });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { asignado_a: staffId || null });
+                }
+              }}
+              onEstado={(estado: ConversationStatus) => {
+                dispatch({ type: "SET_STATUS", conversationId: activa.id, estado });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { estado });
+                }
+              }}
+              onDepartamento={(departamento: DepartmentId) => {
+                dispatch({ type: "SET_DEPARTMENT", conversationId: activa.id, departamento });
+                if (activa.canal === "whatsapp" && contactoActivo.telefono) {
+                  persistirWa(contactoActivo.telefono, { departamento });
+                }
+              }}
             />
           </div>
         </div>

@@ -14,14 +14,45 @@ interface WaInboundDTO {
   direccion?: "in" | "out";
 }
 
+interface ConversacionDTO {
+  wa_from: string;
+  asignado_a?: string | null;
+  estado?: string | null;
+  departamento?: string | null;
+}
+
 // Puente: sondea el webhook server-side y mete los mensajes reales de WhatsApp
 // en el store (como conversaciones nuevas o existentes). Corre siempre, no
 // depende del toggle "en vivo" del demo.
 export function useWhatsappBridge(dispatch: Dispatch<StoreAction>) {
   const cursor = useRef(0);
+  const hidratado = useRef(false);
 
+  // Sondeo continuo cada 4s.
   useEffect(() => {
     let activo = true;
+
+    // Hidratacion: carga asignado/estado/departamento persistidos. Se llama una
+    // sola vez, despues del primer sondeo exitoso (cuando ya existen las
+    // conversaciones), evitando la carrera de un timer fijo.
+    async function hidratar() {
+      try {
+        const r = await fetch("/api/wa/conversaciones");
+        if (!r.ok || !activo) return;
+        const data = (await r.json()) as { conversaciones: ConversacionDTO[] };
+        for (const row of data.conversaciones) {
+          dispatch({
+            type: "HIDRATAR_CONVERSACION",
+            wa_from: row.wa_from,
+            asignado_a: row.asignado_a ?? null,
+            estado: row.estado ?? null,
+            departamento: row.departamento ?? null,
+          });
+        }
+      } catch {
+        // silencioso
+      }
+    }
 
     async function sondear() {
       try {
@@ -40,8 +71,13 @@ export function useWhatsappBridge(dispatch: Dispatch<StoreAction>) {
           });
           if (m.seq > cursor.current) cursor.current = m.seq;
         }
+        // Tras el primer sondeo, las conversaciones ya existen: rehidrata su estado.
+        if (!hidratado.current) {
+          hidratado.current = true;
+          await hidratar();
+        }
       } catch {
-        // silencioso: reintenta en el próximo tick
+        // silencioso: reintenta en el proximo tick
       }
     }
 

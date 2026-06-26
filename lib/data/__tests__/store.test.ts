@@ -100,3 +100,91 @@ describe("storeReducer", () => {
     expect(after.socialPosts[0].texto).toBe("Nueva campaña de control prenatal.");
   });
 });
+
+// ---------------------------------------------------------------------------
+// HIDRATAR_CONVERSACION
+// Las conversaciones "wac-" no estan en el seed; se crean via WHATSAPP_INCOMING.
+// ---------------------------------------------------------------------------
+describe("storeReducer - HIDRATAR_CONVERSACION", () => {
+  const TEST_FROM = "50376294980";
+
+  // Crea un estado base que contiene una conversacion wac real.
+  function stateWithWacConv(): StoreState {
+    return storeReducer(freshState(), {
+      type: "WHATSAPP_INCOMING",
+      waId: "wamsg-test-1",
+      from: TEST_FROM,
+      nombre: "Paciente Test",
+      texto: "Hola, tengo una consulta.",
+      ts: "2026-06-23T11:00:00",
+    });
+  }
+
+  it("aplica asignado_a, estado y departamento a una conversacion wac existente", () => {
+    const before = stateWithWacConv();
+    const after = storeReducer(before, {
+      type: "HIDRATAR_CONVERSACION",
+      wa_from: TEST_FROM,
+      asignado_a: "s2",
+      estado: "en_progreso",
+      departamento: "ginecologia",
+    });
+    const c = after.conversations.find((x) => x.id === `wac-${TEST_FROM}`)!;
+    expect(c.asignadoA).toBe("s2");
+    expect(c.estado).toBe("en_progreso");
+    expect(c.departamento).toBe("ginecologia");
+  });
+
+  it("es no-op si la conversacion wac no existe: retorna la misma referencia de estado", () => {
+    const before = stateWithWacConv();
+    const after = storeReducer(before, {
+      type: "HIDRATAR_CONVERSACION",
+      wa_from: "99999999999",
+      asignado_a: "s2",
+      estado: "en_progreso",
+      departamento: "ginecologia",
+    });
+    // El reducer retorna `state` sin modificar cuando la conv no existe
+    expect(after).toBe(before);
+  });
+
+  it("asignado_a null desasigna; estado/departamento null se conservan", () => {
+    // Paso 1: establecer valores reales
+    const withValues = storeReducer(stateWithWacConv(), {
+      type: "HIDRATAR_CONVERSACION",
+      wa_from: TEST_FROM,
+      asignado_a: "s3",
+      estado: "en_progreso",
+      departamento: "obstetricia",
+    });
+    // Paso 2: hidratar con todos null
+    const after = storeReducer(withValues, {
+      type: "HIDRATAR_CONVERSACION",
+      wa_from: TEST_FROM,
+      asignado_a: null,
+      estado: null,
+      departamento: null,
+    });
+    const c = after.conversations.find((x) => x.id === `wac-${TEST_FROM}`)!;
+    // asignado_a null = desasignar explicito; estado/departamento null no pisan.
+    expect(c.asignadoA).toBeUndefined();
+    expect(c.estado).toBe("en_progreso");
+    expect(c.departamento).toBe("obstetricia");
+  });
+
+  it("actualiza solo los campos no-null dejando los null sin tocar", () => {
+    // Conv recien creada: asignadoA=undefined, estado="nuevo", departamento="recepcion"
+    const before = stateWithWacConv();
+    const after = storeReducer(before, {
+      type: "HIDRATAR_CONVERSACION",
+      wa_from: TEST_FROM,
+      asignado_a: "s4",
+      estado: null,
+      departamento: null,
+    });
+    const c = after.conversations.find((x) => x.id === `wac-${TEST_FROM}`)!;
+    expect(c.asignadoA).toBe("s4");
+    expect(c.estado).toBe("nuevo");       // no debe cambiar
+    expect(c.departamento).toBe("recepcion"); // no debe cambiar
+  });
+});

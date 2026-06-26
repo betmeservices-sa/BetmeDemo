@@ -3,6 +3,7 @@
 import { Phone, AtSign, StickyNote, Building2, UserCheck, Activity, X } from "lucide-react";
 import { departments, staff } from "@/lib/data/seed";
 import { depto } from "@/lib/format";
+import { telefonoBonito } from "@/lib/phone";
 import { Avatar, inicialesDe } from "@/components/ui/Avatar";
 import { ChannelBadge } from "@/components/ui/ChannelBadge";
 import type {
@@ -57,7 +58,7 @@ export function ContextPanel({
 
       <div className="space-y-2 rounded-xl border border-line bg-surface/60 p-3 text-[13px]">
         {contact.telefono && (
-          <Row Icon={Phone} label={contact.telefono} />
+          <Row Icon={Phone} label={telefonoBonito(contact.telefono)} />
         )}
         {contact.handle && <Row Icon={AtSign} label={contact.handle} />}
         {contact.notas && <Row Icon={StickyNote} label={contact.notas} multiline />}
