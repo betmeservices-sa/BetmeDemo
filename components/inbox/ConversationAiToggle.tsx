@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Bot } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-// Toggle de la IA para UNA conversacion. Si esta "activa", la IA responde ese
-// chat; si esta "en pausa", lo lleva un humano. Se pausa solo cuando alguien
-// responde manual; este boton permite reactivarla.
+// Override de la IA para UNA conversacion. Es independiente del interruptor
+// global: puedes encender la IA en un chat aunque el "Modo IA" global este
+// apagado, o apagarla en un chat aunque el global este encendido.
 export function ConversationAiToggle({
   from,
   visible,
@@ -16,41 +16,40 @@ export function ConversationAiToggle({
   visible: boolean;
   refreshKey?: number;
 }) {
-  const [paused, setPaused] = useState<boolean | null>(null);
+  const [activa, setActiva] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!visible || !from) {
-      setPaused(null);
+      setActiva(null);
       return;
     }
-    let activo = true;
+    let on = true;
     fetch(`/api/ai/conversacion?from=${encodeURIComponent(from)}`)
       .then((r) => r.json())
       .then((d) => {
-        if (activo) setPaused(Boolean(d.paused));
+        if (on) setActiva(Boolean(d.activa));
       })
       .catch(() => {
-        if (activo) setPaused(false);
+        if (on) setActiva(false);
       });
     return () => {
-      activo = false;
+      on = false;
     };
   }, [from, visible, refreshKey]);
 
-  if (!visible || !from || paused === null) return null;
-  const activa = !paused;
+  if (!visible || !from || activa === null) return null;
 
   async function toggle() {
-    const nuevoPaused = activa; // activa -> pausar; pausada -> reactivar
-    setPaused(nuevoPaused);
+    const nuevo = !activa;
+    setActiva(nuevo);
     try {
       await fetch("/api/ai/conversacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from, paused: nuevoPaused }),
+        body: JSON.stringify({ from, activa: nuevo }),
       });
     } catch {
-      setPaused(!nuevoPaused);
+      setActiva(!nuevo);
     }
   }
 
@@ -62,7 +61,7 @@ export function ConversationAiToggle({
       title={
         activa
           ? "La IA responde este chat. Toca para tomarlo tú."
-          : "Tú llevas este chat. Toca para reactivar la IA."
+          : "Tú llevas este chat. Toca para que lo responda la IA."
       }
       className={cn(
         "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold transition",

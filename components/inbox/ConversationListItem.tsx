@@ -1,5 +1,6 @@
+import { UserCheck } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { diaRelativo, depto } from "@/lib/format";
+import { diaRelativo, depto, inicialesStaff, nombreStaff } from "@/lib/format";
 import { Avatar, inicialesDe } from "@/components/ui/Avatar";
 import { ChannelBadge } from "@/components/ui/ChannelBadge";
 import type { Contact, Conversation, Message } from "@/lib/data/types";
@@ -58,6 +59,20 @@ export function ConversationListItem({
           >
             {d.nombre}
           </span>
+          {conversation.estado === "nuevo" && (
+            <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600">
+              Nuevo
+            </span>
+          )}
+          {conversation.asignadoA && (
+            <span
+              title={`Asignado a ${nombreStaff(conversation.asignadoA)}`}
+              className="ml-auto flex items-center gap-1 rounded-md bg-[#eef1f6] px-1.5 py-0.5 text-[10px] font-semibold text-[#5b6b80]"
+            >
+              <UserCheck size={11} />
+              {inicialesStaff(conversation.asignadoA)}
+            </span>
+          )}
         </div>
       </div>
     </button>

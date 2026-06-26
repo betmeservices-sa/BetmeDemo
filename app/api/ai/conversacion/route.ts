@@ -1,20 +1,25 @@
 import { NextResponse } from "next/server";
-import { isPaused, pauseConvo, unpauseConvo } from "@/lib/ai-store";
+import { getChatAiActiva, getChatOverride, setChatOverride } from "@/lib/ai-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Estado de la IA para UNA conversacion (la lee el toggle del hilo).
-// GET ?from=<wa_from> -> { paused: boolean }  (paused = IA apagada para ese chat)
+// Estado EFECTIVO de la IA para una conversacion (lo lee el toggle del hilo).
+// GET ?from=<wa_from> -> { activa, overridden }
+//   activa: si la IA respondera ese chat (su override si existe; si no, el global)
+//   overridden: si el chat tiene un estado propio distinto del global
 export async function GET(req: Request) {
   const from = new URL(req.url).searchParams.get("from")?.trim() || "";
-  if (!from) return NextResponse.json({ paused: false });
-  return NextResponse.json({ paused: await isPaused(from) });
+  if (!from) return NextResponse.json({ activa: false, overridden: false });
+  const ov = await getChatOverride(from);
+  const activa = await getChatAiActiva(from);
+  return NextResponse.json({ activa, overridden: ov !== null });
 }
 
-// POST { from, paused } -> pausa o reactiva la IA para esa conversacion.
+// POST { from, activa } -> fija el override de la IA para esa conversacion.
+// activa=true la enciende (aunque el global este off); false la apaga.
 export async function POST(req: Request) {
-  let body: { from?: string; paused?: boolean };
+  let body: { from?: string; activa?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -24,8 +29,7 @@ export async function POST(req: Request) {
   if (!from) {
     return NextResponse.json({ ok: false, error: "Falta 'from'" }, { status: 400 });
   }
-  const paused = Boolean(body.paused);
-  if (paused) await pauseConvo(from);
-  else await unpauseConvo(from);
-  return NextResponse.json({ ok: true, paused });
+  const activa = Boolean(body.activa);
+  await setChatOverride(from, activa);
+  return NextResponse.json({ ok: true, activa });
 }

@@ -126,7 +126,14 @@ export function storeReducer(state: StoreState, action: StoreAction): StoreState
       return {
         ...state,
         conversations: state.conversations.map((c) =>
-          c.id === action.conversationId ? { ...c, asignadoA: action.staffId } : c,
+          c.id === action.conversationId
+            ? {
+                ...c,
+                asignadoA: action.staffId,
+                // Asignarse = atender: deja de ser "nuevo".
+                estado: c.estado === "nuevo" ? "en_progreso" : c.estado,
+              }
+            : c,
         ),
       };
     case "SET_STATUS":

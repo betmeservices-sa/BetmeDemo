@@ -6,7 +6,6 @@ import { cn } from "@/lib/cn";
 import { depto } from "@/lib/format";
 import { Avatar, inicialesDe } from "@/components/ui/Avatar";
 import { ChannelBadge } from "@/components/ui/ChannelBadge";
-import { StatusPill } from "@/components/ui/StatusPill";
 import { MessageBubble } from "./MessageBubble";
 import { Composer } from "./Composer";
 import { ConversationAiToggle } from "./ConversationAiToggle";
@@ -80,9 +79,6 @@ export function Thread({
             visible={conversation.canal === "whatsapp"}
             refreshKey={aiRefresh}
           />
-          <span className="hidden sm:inline-flex">
-            <StatusPill estado={conversation.estado} />
-          </span>
           {!esMia && (
             <button
               type="button"

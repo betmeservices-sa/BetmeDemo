@@ -1,7 +1,7 @@
 // Respuesta automática de la IA con "debounce": espera un silencio antes de
 // contestar, para que una ráfaga de mensajes del paciente se responda UNA vez.
 import { addOutbound, getSince } from "./wa-store";
-import { getAiEnabled, isPaused } from "./ai-store";
+import { getChatAiActiva } from "./ai-store";
 import { upsertContacto } from "./contacts-store";
 import { generarRespuesta, type TurnoIA } from "./ai";
 import { enviarTextoWa, mostrarEscribiendo, enviarReaccion } from "./wa-send";
@@ -29,8 +29,8 @@ export async function programarRespuestaIA(opts: {
   triggerWamid: string;
 }): Promise<void> {
   try {
-    if (!(await getAiEnabled())) return;
-    if (await isPaused(opts.from)) return;
+    // Activa si: override del chat (si existe) o, si no, el interruptor global.
+    if (!(await getChatAiActiva(opts.from))) return;
 
     await sleep(esperaAleatoria());
 

@@ -8,29 +8,38 @@ const MESES = [
 
 const TZ = "America/El_Salvador";
 
-// Los mensajes reales de WhatsApp llegan en UTC (ISO con 'Z'); los del seed del
-// demo vienen sin zona. Convertimos los reales a hora local de El Salvador.
-function esUTC(ts: string): boolean {
-  return ts.endsWith("Z");
+// Detecta timestamps CON zona (reales): terminan en 'Z' o en un offset como
+// '+00:00' / '-06:00'. OJO: Supabase (timestamptz) los devuelve con '+00:00',
+// NO con 'Z', por eso antes se mostraba la hora UTC cruda. Los del seed del demo
+// vienen sin zona y se muestran tal cual.
+function conZona(ts: string): boolean {
+  return ts.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(ts);
 }
 
-// "2026-06-25T22:36:00Z" -> "16:36" (hora local SV). Seed sin Z -> tal cual.
+function a12h(h: number, m: number): string {
+  const ampm = h < 12 ? "a.m." : "p.m.";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+// "2026-06-26T06:10:00+00:00" -> "12:10 a.m." (hora local de El Salvador).
 export function horaDe(ts: string): string {
-  if (esUTC(ts)) {
-    return new Date(ts).toLocaleTimeString("es-ES", {
+  if (conZona(ts)) {
+    const hhmm = new Intl.DateTimeFormat("en-GB", {
       timeZone: TZ,
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-    });
+    }).format(new Date(ts));
+    const [h, m] = hhmm.split(":").map(Number);
+    return a12h(h, m);
   }
-  const hhmm = ts.slice(11, 16);
-  const [h, m] = hhmm.split(":");
-  return `${Number(h)}:${m}`;
+  const [h, m] = ts.slice(11, 16).split(":").map(Number);
+  return a12h(h, m);
 }
 
 function fechaLocal(ts: string): string {
-  if (esUTC(ts)) return new Date(ts).toLocaleDateString("en-CA", { timeZone: TZ });
+  if (conZona(ts)) return new Date(ts).toLocaleDateString("en-CA", { timeZone: TZ });
   return ts.slice(0, 10);
 }
 

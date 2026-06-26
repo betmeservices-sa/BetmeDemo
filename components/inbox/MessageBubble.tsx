@@ -136,7 +136,7 @@ export function MessageBubble({
       </div>
 
       <span className="mt-1 px-1 text-[10.5px] text-[#94a3b4]">
-        {esStaff && message.staffId ? `${nombreStaff(message.staffId)} · ` : ""}
+        {esStaff ? `${message.staffId ? nombreStaff(message.staffId) : "Asistente IA"} · ` : ""}
         {horaDe(message.ts)}
       </span>
     </div>

@@ -3,9 +3,9 @@
 import { getSupabase } from "./supabase";
 
 let memEnabled = false;
-const memPaused = new Set<string>();
+const memOverride = new Map<string, boolean>(); // true=ON, false=OFF; ausente=seguir global
 
-// Interruptor global on/off.
+// Interruptor global on/off (default para chats sin override explicito).
 export async function getAiEnabled(): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return memEnabled;
@@ -29,41 +29,37 @@ export async function setAiEnabled(enabled: boolean): Promise<void> {
   if (error) console.error("ai_config upsert:", error.message);
 }
 
-// Apagado por conversación: cuando un humano responde, la IA se retira de ese chat.
-export async function isPaused(from: string): Promise<boolean> {
+// Override por conversacion: true = IA forzada ON, false = OFF, null = seguir el global.
+export async function getChatOverride(from: string): Promise<boolean | null> {
   const sb = getSupabase();
-  if (!sb) return memPaused.has(from);
+  if (!sb) return memOverride.has(from) ? (memOverride.get(from) as boolean) : null;
   const { data, error } = await sb
     .from("ai_paused")
-    .select("wa_from")
+    .select("activa")
     .eq("wa_from", from)
     .maybeSingle();
   if (error) {
     console.error("ai_paused select:", error.message);
-    return false;
+    return null;
   }
-  return Boolean(data);
+  if (!data) return null;
+  return Boolean((data as { activa?: boolean }).activa);
 }
 
-export async function pauseConvo(from: string): Promise<void> {
+export async function setChatOverride(from: string, activa: boolean): Promise<void> {
   const sb = getSupabase();
   if (!sb) {
-    memPaused.add(from);
+    memOverride.set(from, activa);
     return;
   }
   const { error } = await sb
     .from("ai_paused")
-    .upsert({ wa_from: from }, { onConflict: "wa_from", ignoreDuplicates: true });
+    .upsert({ wa_from: from, activa }, { onConflict: "wa_from" });
   if (error) console.error("ai_paused upsert:", error.message);
 }
 
-// Reactiva la IA para una conversacion (quita la pausa).
-export async function unpauseConvo(from: string): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) {
-    memPaused.delete(from);
-    return;
-  }
-  const { error } = await sb.from("ai_paused").delete().eq("wa_from", from);
-  if (error) console.error("ai_paused delete:", error.message);
+// La IA esta activa para este chat? Usa el override si existe; si no, el global.
+export async function getChatAiActiva(from: string): Promise<boolean> {
+  const ov = await getChatOverride(from);
+  return ov !== null ? ov : getAiEnabled();
 }

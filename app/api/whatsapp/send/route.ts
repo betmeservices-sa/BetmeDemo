@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { addOutbound } from "@/lib/wa-store";
 import { enviarTextoWa } from "@/lib/wa-send";
-import { pauseConvo } from "@/lib/ai-store";
+import { setChatOverride } from "@/lib/ai-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,8 +22,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Faltan 'to' o 'text'" }, { status: 400 });
   }
 
-  // Un humano tomó la conversación: la IA se retira de este chat.
-  if (body.manual) await pauseConvo(to);
+  // Un humano tomó la conversación: la IA se apaga (override OFF) en este chat.
+  if (body.manual) await setChatOverride(to, false);
 
   const env = await enviarTextoWa(to, text);
   if (!env.ok) {
