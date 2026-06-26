@@ -38,6 +38,9 @@ export async function POST(req: Request) {
   if (!to) {
     return NextResponse.json({ ok: false, error: "Falta campo 'to'" }, { status: 400 });
   }
+  if (!/^\d{8,15}$/.test(to)) {
+    return NextResponse.json({ ok: false, error: "Numero invalido" }, { status: 400 });
+  }
   if (!(fileRaw instanceof File)) {
     return NextResponse.json({ ok: false, error: "Falta campo 'file'" }, { status: 400 });
   }

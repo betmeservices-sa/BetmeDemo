@@ -4,15 +4,10 @@ import { getAiEnabled, setAiEnabled } from "@/lib/ai-store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Estado actual del Modo IA (lo lee el toggle de la bandeja). Incluye un
-// diagnostico de si las credenciales estan presentes en el server (sin exponerlas).
+// Estado actual del Modo IA (lo lee el toggle de la bandeja). No expone que
+// credenciales estan configuradas: eso le da pistas a un atacante.
 export async function GET() {
-  return NextResponse.json({
-    enabled: await getAiEnabled(),
-    hasKey: Boolean(process.env.ANTHROPIC_API_KEY),
-    hasWaToken: Boolean(process.env.WHATSAPP_ACCESS_TOKEN),
-    model: process.env.AI_MODEL || "claude-haiku-4-5",
-  });
+  return NextResponse.json({ enabled: await getAiEnabled() });
 }
 
 // Enciende/apaga el Modo IA global.

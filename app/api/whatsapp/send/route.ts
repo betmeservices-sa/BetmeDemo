@@ -21,6 +21,13 @@ export async function POST(req: Request) {
   if (!to || !text) {
     return NextResponse.json({ ok: false, error: "Faltan 'to' o 'text'" }, { status: 400 });
   }
+  // El destino debe ser un wa_id (solo digitos, 8-15). Evita enviar a basura.
+  if (!/^\d{8,15}$/.test(to)) {
+    return NextResponse.json({ ok: false, error: "Numero invalido" }, { status: 400 });
+  }
+  if (text.length > 4096) {
+    return NextResponse.json({ ok: false, error: "Texto demasiado largo (max 4096)" }, { status: 400 });
+  }
 
   // Un humano tomó la conversación: la IA se apaga (override OFF) en este chat.
   if (body.manual) await setChatOverride(to, false);

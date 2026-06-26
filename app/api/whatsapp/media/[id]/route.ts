@@ -11,6 +11,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token) return new Response("Faltan credenciales de WhatsApp", { status: 500 });
   if (!id) return new Response("Falta el id del archivo", { status: 400 });
+  // Los media_id de Meta son alfanumericos; rechaza cualquier otra cosa.
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) return new Response("Id invalido", { status: 400 });
 
   // 1. Resolver el media_id a una URL temporal + su mime.
   const metaRes = await fetch(`https://graph.facebook.com/${VERSION}/${id}`, {
@@ -26,11 +28,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return new Response("No se pudo descargar el archivo", { status: 502 });
   }
 
+  const mime = meta.mime_type || "application/octet-stream";
+  // Imagen/audio/video se sirven inline (para verse/reproducir en el chat); todo
+  // lo demas (documentos, SVG) se fuerza a descarga, para no renderizar HTML
+  // potencialmente malicioso desde nuestro origen.
+  const inline = /^(image|audio|video)\//.test(mime) && mime !== "image/svg+xml";
   return new Response(fileRes.body, {
     status: 200,
     headers: {
-      "Content-Type": meta.mime_type || "application/octet-stream",
+      "Content-Type": mime,
       "Cache-Control": "private, max-age=300",
+      "Content-Disposition": inline ? "inline" : "attachment",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }
