@@ -9,6 +9,7 @@ import { staff, ME } from "@/lib/data/seed";
 import { Avatar } from "@/components/ui/Avatar";
 import { Brand } from "./Brand";
 import { RoleSwitcher } from "./RoleSwitcher";
+import { Reloj } from "./Reloj";
 
 interface NavItem {
   id: ModuleId;
@@ -54,6 +55,10 @@ export function Sidebar({
         >
           <X size={18} />
         </button>
+      </div>
+
+      <div className="border-b border-line px-3 py-2.5">
+        <Reloj />
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
