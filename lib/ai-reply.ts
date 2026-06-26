@@ -6,14 +6,22 @@ import { upsertContacto } from "./contacts-store";
 import { generarRespuesta, type TurnoIA } from "./ai";
 import { enviarTextoWa, mostrarEscribiendo, enviarReaccion } from "./wa-send";
 
-// Cuánto silencio esperar tras el último mensaje antes de responder.
-// OJO en Vercel: el trabajo de `after` está limitado por maxDuration (10s en el
-// plan Hobby). El debounce + la(s) llamada(s) a Claude deben caber ahí. Por eso
-// el default es corto; súbelo con AI_DEBOUNCE_MS si estás en Pro (60s).
-const DEBOUNCE_MS = Number(process.env.AI_DEBOUNCE_MS) || 3000;
+// Espera ALEATORIA antes de responder, para que se sienta humano (a veces
+// contesta rapido, a veces se tarda). Por defecto entre 3s y 9s.
+// OJO Vercel: el trabajo de `after` esta limitado por maxDuration (10s en Hobby,
+// 60s en Pro). La espera + la llamada a Claude debe caber ahi. Con el rango 3-9s
+// necesitas Vercel Pro; en Hobby baja AI_DELAY_MAX_MS a ~5000.
+const DELAY_MIN_MS = Number(process.env.AI_DELAY_MIN_MS) || 3000;
+const DELAY_MAX_MS = Number(process.env.AI_DELAY_MAX_MS) || 9000;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function esperaAleatoria(): number {
+  const min = Math.min(DELAY_MIN_MS, DELAY_MAX_MS);
+  const max = Math.max(DELAY_MIN_MS, DELAY_MAX_MS);
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 export async function programarRespuestaIA(opts: {
@@ -24,7 +32,7 @@ export async function programarRespuestaIA(opts: {
     if (!(await getAiEnabled())) return;
     if (await isPaused(opts.from)) return;
 
-    await sleep(DEBOUNCE_MS);
+    await sleep(esperaAleatoria());
 
     // ¿Sigo siendo el último mensaje de esta conversación? Si llegó uno más nuevo
     // (otra parte de la ráfaga) o ya hay respuesta, me retiro: otro handler responde.
