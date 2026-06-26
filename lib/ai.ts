@@ -22,7 +22,7 @@ ESTILO
 
 AGENDAR UNA CITA (sigue este orden, paso a paso)
 1. Pregunta el motivo (consulta ginecológica, control prenatal, ultrasonido, papanicolaou, etc.).
-2. Ofrece 2 opciones de día y hora dentro del horario de atención.
+2. Ofrece 2 opciones de día y hora FUTURAS dentro del horario de atención (usa el CONTEXTO TEMPORAL que se te da; nunca propongas un día u hora que ya pasó).
 3. Pide el nombre completo.
 4. Pide un correo electrónico para enviar la confirmación.
 5. Confirma si este mismo número de WhatsApp sirve para contactarle y recordarle la cita.
@@ -106,6 +106,26 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// Fecha y hora actual en El Salvador, para que la IA agende con sentido (no
+// ofrezca dias/horas que ya pasaron). Se recalcula en cada llamada.
+function contextoTemporal(): string {
+  const ahora = new Date();
+  const fecha = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "America/El_Salvador",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(ahora);
+  const hora = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "America/El_Salvador",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(ahora);
+  return `CONTEXTO TEMPORAL (zona horaria El Salvador, UTC-6): hoy es ${fecha} y son las ${hora}. Usa SIEMPRE esta fecha y hora como referencia para agendar. Ofrece SOLO dias y horas FUTUROS (de hoy en adelante; si propones hoy, que sea despues de la hora actual y dentro del horario). Nunca ofrezcas un dia u hora que ya paso. Al proponer un dia, menciona el dia de la semana y la fecha, por ejemplo "el lunes 29 a las 10:00 a.m.".`;
+}
+
 // Genera la respuesta de la IA. Usa tool use para guardar datos del contacto y
 // para reaccionar; ejecuta esas acciones vía los callbacks de `acciones`.
 export async function generarRespuesta(
@@ -122,7 +142,7 @@ export async function generarRespuesta(
     const res = await client.messages.create({
       model: MODEL,
       max_tokens: 500,
-      system: SYSTEM_PROMPT,
+      system: `${SYSTEM_PROMPT}\n\n${contextoTemporal()}`,
       tools: TOOLS,
       messages,
     });
