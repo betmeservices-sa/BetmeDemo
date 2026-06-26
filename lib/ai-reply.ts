@@ -24,6 +24,22 @@ function esperaAleatoria(): number {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
+// Tras un hueco largo (default 4h) la conversacion se trata como NUEVA: la IA
+// solo ve los mensajes de la "sesion" reciente, no arrastra historial viejo.
+const SESION_GAP_MS = (Number(process.env.AI_SESSION_GAP_HORAS) || 4) * 60 * 60 * 1000;
+
+function sesionReciente<T extends { ts: string }>(msgs: T[]): T[] {
+  const out: T[] = [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (out.length > 0) {
+      const gap = new Date(out[0].ts).getTime() - new Date(msgs[i].ts).getTime();
+      if (gap > SESION_GAP_MS) break;
+    }
+    out.unshift(msgs[i]);
+  }
+  return out;
+}
+
 export async function programarRespuestaIA(opts: {
   from: string;
   triggerWamid: string;
@@ -45,7 +61,8 @@ export async function programarRespuestaIA(opts: {
     const ultimo = conv.at(-1);
     if (!ultimo || ultimo.waId !== opts.triggerWamid || ultimo.direccion !== "in") return;
 
-    const historial: TurnoIA[] = conv.map((m) => ({
+    // Solo la sesion reciente (tras un hueco largo arranca fresca).
+    const historial: TurnoIA[] = sesionReciente(conv).map((m) => ({
       autor: m.direccion === "out" ? "staff" : "paciente",
       texto: m.texto,
     }));
