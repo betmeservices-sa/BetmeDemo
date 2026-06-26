@@ -12,6 +12,7 @@ import { InboxFilters, type Filtros } from "@/components/inbox/InboxFilters";
 import { ConversationList, type ListaItem } from "@/components/inbox/ConversationList";
 import { Thread } from "@/components/inbox/Thread";
 import { ContextPanel } from "@/components/inbox/ContextPanel";
+import { estadoVentana } from "@/lib/ventana";
 import type { ConversationStatus, DepartmentId } from "@/lib/data/types";
 
 const FILTROS_INICIALES: Filtros = {
@@ -83,6 +84,16 @@ export default function BandejaPage() {
       .sort((a, b) => a.ts.localeCompare(b.ts));
   }, [state.messages, activa]);
 
+  // Ultimo mensaje del cliente (entrante) y si la ventana de 24h esta cerrada.
+  const ultimoEntranteTs = useMemo(() => {
+    for (let i = mensajesActivos.length - 1; i >= 0; i--) {
+      if (mensajesActivos[i].autor === "paciente") return mensajesActivos[i].ts;
+    }
+    return undefined;
+  }, [mensajesActivos]);
+  const ventanaCerrada =
+    activa?.canal === "whatsapp" ? estadoVentana(ultimoEntranteTs).cerrada : false;
+
   function seleccionar(id: string) {
     setActivaId(id);
     dispatch({ type: "MARK_READ", conversationId: id });
@@ -132,6 +143,7 @@ export default function BandejaPage() {
               key={activa.id}
               conversation={activa}
               aiRefresh={aiRefresh}
+              ventanaCerrada={ventanaCerrada}
               contact={contactoActivo}
               messages={mensajesActivos}
               esMia={activa.asignadoA === ME}
@@ -251,6 +263,7 @@ export default function BandejaPage() {
             <ContextPanel
               conversation={activa}
               contact={contactoActivo}
+              ultimoEntranteTs={ultimoEntranteTs}
               onAsignar={(staffId) => {
                 dispatch({ type: "ASSIGN", conversationId: activa.id, staffId });
                 if (activa.canal === "whatsapp" && contactoActivo.telefono) {
@@ -282,6 +295,7 @@ export default function BandejaPage() {
             <ContextPanel
               conversation={activa}
               contact={contactoActivo}
+              ultimoEntranteTs={ultimoEntranteTs}
               onClose={() => setCtxOpen(false)}
               onAsignar={(staffId) => {
                 dispatch({ type: "ASSIGN", conversationId: activa.id, staffId });

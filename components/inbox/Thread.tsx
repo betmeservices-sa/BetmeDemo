@@ -25,6 +25,7 @@ export function Thread({
   onReact,
   onAttach,
   aiRefresh,
+  ventanaCerrada,
 }: {
   conversation: Conversation;
   contact: Contact;
@@ -39,6 +40,7 @@ export function Thread({
   onReact?: (messageId: string, emoji: string) => void;
   onAttach?: (file: File) => void | Promise<void>;
   aiRefresh?: number;
+  ventanaCerrada?: boolean;
 }) {
   const finRef = useRef<HTMLDivElement>(null);
   const d = depto(conversation.departamento);
@@ -130,7 +132,12 @@ export function Thread({
         <div ref={finRef} />
       </div>
 
-      <Composer onSend={onSend} onTyping={onTyping} onAttach={onAttach} />
+      <Composer
+        onSend={onSend}
+        onTyping={onTyping}
+        onAttach={onAttach}
+        ventanaCerrada={ventanaCerrada}
+      />
     </div>
   );
 }

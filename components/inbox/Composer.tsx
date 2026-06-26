@@ -1,17 +1,19 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { Loader2, Paperclip, SendHorizonal } from "lucide-react";
+import { Clock, Loader2, Paperclip, SendHorizonal } from "lucide-react";
 
 export function Composer({
   onSend,
   onTyping,
   onAttach,
+  ventanaCerrada,
   placeholder = "Escribe una respuesta...",
 }: {
   onSend: (texto: string) => void | Promise<void>;
   onTyping?: () => void;
   onAttach?: (file: File) => void | Promise<void>;
+  ventanaCerrada?: boolean;
   placeholder?: string;
 }) {
   const [texto, setTexto] = useState("");
@@ -69,7 +71,14 @@ export function Composer({
   }
 
   return (
-    <div className="flex items-end gap-2 border-t border-line bg-card px-4 py-3">
+    <div className="border-t border-line bg-card">
+      {ventanaCerrada && (
+        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-[11.5px] font-medium text-amber-700">
+          <Clock size={13} className="shrink-0" />
+          Ventana de 24h cerrada: el texto libre fallara, usa una plantilla aprobada.
+        </div>
+      )}
+      <div className="flex items-end gap-2 px-4 py-3">
       {/* Boton de adjuntar */}
       {onAttach && (
         <>
@@ -113,6 +122,7 @@ export function Composer({
       >
         <SendHorizonal size={18} />
       </button>
+      </div>
     </div>
   );
 }

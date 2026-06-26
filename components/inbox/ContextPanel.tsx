@@ -6,6 +6,7 @@ import { depto } from "@/lib/format";
 import { telefonoBonito } from "@/lib/phone";
 import { Avatar, inicialesDe } from "@/components/ui/Avatar";
 import { ChannelBadge } from "@/components/ui/ChannelBadge";
+import { VentanaIndicator } from "./VentanaIndicator";
 import type {
   Contact,
   Conversation,
@@ -26,6 +27,7 @@ export function ContextPanel({
   onEstado,
   onDepartamento,
   onClose,
+  ultimoEntranteTs,
 }: {
   conversation: Conversation;
   contact: Contact;
@@ -33,6 +35,7 @@ export function ContextPanel({
   onEstado: (estado: ConversationStatus) => void;
   onDepartamento: (deptId: DepartmentId) => void;
   onClose?: () => void;
+  ultimoEntranteTs?: string;
 }) {
   const d = depto(conversation.departamento);
 
@@ -63,6 +66,11 @@ export function ContextPanel({
         {contact.handle && <Row Icon={AtSign} label={contact.handle} />}
         {contact.notas && <Row Icon={StickyNote} label={contact.notas} multiline />}
       </div>
+
+      <VentanaIndicator
+        ultimoEntranteTs={ultimoEntranteTs}
+        visible={contact.canal === "whatsapp"}
+      />
 
       <Field Icon={UserCheck} label="Asignar a">
         <select
