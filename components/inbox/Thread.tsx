@@ -7,7 +7,7 @@ import { depto } from "@/lib/format";
 import { Avatar, inicialesDe } from "@/components/ui/Avatar";
 import { ChannelBadge } from "@/components/ui/ChannelBadge";
 import { MessageBubble } from "./MessageBubble";
-import { Composer } from "./Composer";
+import { Composer, type EnvioPlantilla } from "./Composer";
 import { ConversationAiToggle } from "./ConversationAiToggle";
 import type { Contact, Conversation, Message } from "@/lib/data/types";
 
@@ -24,6 +24,7 @@ export function Thread({
   onTyping,
   onReact,
   onAttach,
+  onSendTemplate,
   aiRefresh,
   ventanaCerrada,
 }: {
@@ -39,6 +40,7 @@ export function Thread({
   onTyping?: () => void;
   onReact?: (messageId: string, emoji: string) => void;
   onAttach?: (file: File) => void | Promise<void>;
+  onSendTemplate?: (t: EnvioPlantilla) => void | Promise<void>;
   aiRefresh?: number;
   ventanaCerrada?: boolean;
 }) {
@@ -136,6 +138,7 @@ export function Thread({
         onSend={onSend}
         onTyping={onTyping}
         onAttach={onAttach}
+        onSendTemplate={onSendTemplate}
         ventanaCerrada={ventanaCerrada}
       />
     </div>

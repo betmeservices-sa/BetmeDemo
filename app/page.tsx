@@ -189,6 +189,37 @@ export default function BandejaPage() {
                 }
                 dispatch({ type: "SEND_MESSAGE", conversationId: activa.id, texto, staffId: ME });
               }}
+              onSendTemplate={
+                activa.canal === "whatsapp" && contactoActivo.telefono
+                  ? async ({ name, language, variables, texto }) => {
+                      const r = await fetch("/api/whatsapp/send-template", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          to: contactoActivo.telefono,
+                          name,
+                          language,
+                          variables,
+                          texto,
+                          manual: true,
+                        }),
+                      });
+                      const d = await r.json().catch(() => ({ ok: false }));
+                      if (!d.ok) {
+                        console.error("send-template fallo:", d.error);
+                        throw new Error(d.error ?? "Fallo el envio de la plantilla");
+                      }
+                      dispatch({
+                        type: "SEND_MESSAGE",
+                        conversationId: activa.id,
+                        texto,
+                        staffId: ME,
+                        waId: d.id,
+                      });
+                      setAiRefresh((n) => n + 1);
+                    }
+                  : undefined
+              }
               onReact={async (messageId, emoji) => {
                 // Solo aplica a conversaciones de WhatsApp.
                 if (activa.canal !== "whatsapp" || !contactoActivo.telefono) return;

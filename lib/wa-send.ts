@@ -54,6 +54,51 @@ export async function mostrarEscribiendo(messageId: string): Promise<void> {
   }).catch(() => {});
 }
 
+// Envía una PLANTILLA aprobada (template message). Es el único texto permitido
+// fuera de la ventana de 24h, y sirve para iniciar conversación. Los `variables`
+// rellenan los {{1}}, {{2}}, ... del cuerpo en orden.
+export async function enviarPlantilla(
+  to: string,
+  name: string,
+  language: string,
+  variables: string[] = [],
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId) {
+    return { ok: false, error: "Faltan WHATSAPP_ACCESS_TOKEN o WHATSAPP_PHONE_NUMBER_ID" };
+  }
+
+  const components = variables.length
+    ? [{ type: "body", parameters: variables.map((v) => ({ type: "text", text: v })) }]
+    : [];
+
+  const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "template",
+      template: {
+        name,
+        language: { code: language },
+        ...(components.length ? { components } : {}),
+      },
+    }),
+  });
+
+  const data: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error =
+      (data as { error?: { message?: string } })?.error?.message ?? `Graph respondió ${res.status}`;
+    return { ok: false, error };
+  }
+  const id = (data as { messages?: Array<{ id?: string }> })?.messages?.[0]?.id;
+  return { ok: true, id };
+}
+
 // Reacciona a un mensaje del paciente con un emoji.
 export async function enviarReaccion(to: string, messageId: string, emoji: string): Promise<void> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
