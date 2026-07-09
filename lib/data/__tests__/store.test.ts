@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { createInitialState, storeReducer, type StoreState } from "../../store";
 import { contacts, conversations, messages } from "../seed";
 
+const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
 // La bandeja real arranca vacía (createInitialState), así que para probar el
 // reducer sembramos un estado con las conversaciones del seed.
 function freshState(): StoreState {
-  const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
   return {
     ...createInitialState(),
     conversations: clone(conversations),
@@ -64,17 +65,33 @@ describe("storeReducer", () => {
     expect(conv(after, "v2").noLeidos).toBe(0);
   });
 
-  it("INCOMING agrega un mensaje de paciente e incrementa no leídos", () => {
+  // v3 es Instagram, v1 es WhatsApp.
+  it("SOCIAL_INCOMING agrega un mensaje de paciente e incrementa no leídos", () => {
     const before = freshState();
-    const prev = conv(before, "v1").noLeidos;
+    const prev = conv(before, "v3").noLeidos;
     const after = storeReducer(before, {
-      type: "INCOMING",
-      conversationId: "v1",
-      texto: "Una última pregunta doctor.",
+      type: "SOCIAL_INCOMING",
+      conversationId: "v3",
+      texto: "Una última pregunta.",
+      ts: "2026-06-23T11:00:00.000Z",
     });
-    const added = msgs(after, "v1").at(-1)!;
+    const added = msgs(after, "v3").at(-1)!;
     expect(added.autor).toBe("paciente");
-    expect(conv(after, "v1").noLeidos).toBe(prev + 1);
+    expect(added.ts).toBe("2026-06-23T11:00:00.000Z");
+    expect(conv(after, "v3").noLeidos).toBe(prev + 1);
+    expect(conv(after, "v3").ultimoMensajeTs).toBe(added.ts);
+  });
+
+  it("SOCIAL_INCOMING reabre un hilo resuelto", () => {
+    const before = freshState();
+    expect(conv(before, "v7").estado).toBe("resuelto"); // v7 = Instagram resuelto
+    const after = storeReducer(before, {
+      type: "SOCIAL_INCOMING",
+      conversationId: "v7",
+      texto: "Hola de nuevo.",
+      ts: "2026-06-23T11:00:00.000Z",
+    });
+    expect(conv(after, "v7").estado).toBe("en_progreso");
   });
 
   it("SEND_INTERNAL agrega un mensaje al canal interno", () => {
@@ -98,6 +115,100 @@ describe("storeReducer", () => {
     });
     expect(after.socialPosts[0].estado).toBe("programado");
     expect(after.socialPosts[0].texto).toBe("Nueva campaña de control prenatal.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// La simulacion es solo Facebook e Instagram. WhatsApp es un canal real y
+// ninguna accion del motor puede tocarlo. Estos tests fijan esa garantia.
+// ---------------------------------------------------------------------------
+describe("storeReducer - la simulación nunca toca WhatsApp", () => {
+  it("SOCIAL_INCOMING sobre una conversación de WhatsApp es no-op", () => {
+    const before = freshState();
+    expect(conv(before, "v1").canal).toBe("whatsapp");
+    const after = storeReducer(before, {
+      type: "SOCIAL_INCOMING",
+      conversationId: "v1",
+      texto: "Mensaje simulado que no debe entrar.",
+      ts: "2026-06-23T11:00:00.000Z",
+    });
+    expect(after).toBe(before);
+  });
+
+  it("SOCIAL_INCOMING sobre una conversación inexistente es no-op", () => {
+    const before = freshState();
+    const after = storeReducer(before, {
+      type: "SOCIAL_INCOMING",
+      conversationId: "no-existe",
+      texto: "Huérfano.",
+      ts: "2026-06-23T11:00:00.000Z",
+    });
+    expect(after).toBe(before);
+  });
+
+  it("SOCIAL_NEW_THREAD con canal whatsapp es no-op", () => {
+    const before = freshState();
+    const after = storeReducer(before, {
+      type: "SOCIAL_NEW_THREAD",
+      contact: { id: "sc99", nombre: "Impostor", canal: "whatsapp" },
+      conversation: {
+        id: "sv99",
+        canal: "whatsapp",
+        contactId: "sc99",
+        departamento: "recepcion",
+        estado: "nuevo",
+        noLeidos: 1,
+        ultimoMensajeTs: "2026-06-23T11:00:00.000Z",
+      },
+      texto: "No debo existir.",
+      ts: "2026-06-23T11:00:00.000Z",
+    });
+    expect(after).toBe(before);
+  });
+
+  it("SOCIAL_NEW_THREAD de Instagram crea contacto, conversación y primer mensaje", () => {
+    const before = freshState();
+    const after = storeReducer(before, {
+      type: "SOCIAL_NEW_THREAD",
+      contact: { id: "sc0", nombre: "Gabriela Martínez", handle: "@gaby.mart", canal: "instagram" },
+      conversation: {
+        id: "sv0",
+        canal: "instagram",
+        contactId: "sc0",
+        departamento: "recepcion",
+        estado: "nuevo",
+        noLeidos: 1,
+        ultimoMensajeTs: "2026-06-23T11:00:00.000Z",
+      },
+      texto: "Atienden sin cita previa?",
+      ts: "2026-06-23T11:00:00.000Z",
+    });
+    expect(conv(after, "sv0").canal).toBe("instagram");
+    expect(after.contacts.some((c) => c.id === "sc0")).toBe(true);
+    expect(msgs(after, "sv0")).toHaveLength(1);
+    expect(msgs(after, "sv0")[0].texto).toBe("Atienden sin cita previa?");
+  });
+});
+
+describe("storeReducer - SOCIAL_SEED", () => {
+  // El estado real arranca vacío; SOCIAL_SEED es quien mete los hilos sociales.
+  const semilla = {
+    contacts: clone(contacts),
+    conversations: clone(conversations),
+    messages: clone(messages),
+  };
+
+  it("carga solo hilos de Facebook e Instagram, descartando los de WhatsApp", () => {
+    const after = storeReducer(createInitialState(), { type: "SOCIAL_SEED", ...semilla });
+    expect(after.conversations.length).toBeGreaterThan(0);
+    expect(after.conversations.every((c) => c.canal !== "whatsapp")).toBe(true);
+    expect(after.messages.every((m) => after.conversations.some((c) => c.id === m.conversationId))).toBe(true);
+  });
+
+  it("es idempotente: aplicarlo dos veces no duplica nada", () => {
+    const once = storeReducer(createInitialState(), { type: "SOCIAL_SEED", ...semilla });
+    const twice = storeReducer(once, { type: "SOCIAL_SEED", ...semilla });
+    expect(twice).toBe(once);
   });
 });
 

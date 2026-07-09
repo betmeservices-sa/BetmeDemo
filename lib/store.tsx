@@ -9,6 +9,7 @@ import {
 } from "react";
 import { fakeProvider } from "./data/provider";
 import { telefonoBonito } from "./phone";
+import { CANALES_SOCIALES } from "./data/types";
 import type {
   Contact,
   Conversation,
@@ -20,6 +21,13 @@ import type {
   SocialPost,
   SocialStats,
 } from "./data/types";
+
+// Guarda de seguridad: las acciones del motor de simulacion solo pueden tocar
+// Facebook e Instagram. WhatsApp es un canal real y nunca se simula.
+function esSocial(conv: Conversation | undefined): boolean {
+  if (!conv) return false;
+  return (CANALES_SOCIALES as readonly string[]).includes(conv.canal);
+}
 
 export interface StoreState {
   conversations: Conversation[];
@@ -40,7 +48,14 @@ export type StoreAction =
   | { type: "SET_STATUS"; conversationId: string; estado: ConversationStatus }
   | { type: "SET_DEPARTMENT"; conversationId: string; departamento: Conversation["departamento"] }
   | { type: "MARK_READ"; conversationId: string }
-  | { type: "INCOMING"; conversationId: string; texto: string }
+  // --- Motor de simulacion, solo Facebook e Instagram ---
+  // Carga diferida del seed social, con horas ya rebasadas contra la hora real.
+  // Corre en un efecto (cliente) para no romper la hidratacion del SSR.
+  | { type: "SOCIAL_SEED"; contacts: Contact[]; conversations: Conversation[]; messages: Message[] }
+  // Respuesta simulada dentro de un hilo social existente.
+  | { type: "SOCIAL_INCOMING"; conversationId: string; texto: string; ts: string }
+  // Hilo social nuevo: contacto + conversacion + primer mensaje.
+  | { type: "SOCIAL_NEW_THREAD"; contact: Contact; conversation: Conversation; texto: string; ts: string }
   | { type: "SEND_INTERNAL"; channelId: string; texto: string; staffId: string }
   | { type: "ADD_SOCIAL_POST"; red: SocialPost["red"]; texto: string; fecha: string }
   | {
@@ -76,7 +91,10 @@ export function tsFromSeq(seq: number): string {
 
 export function createInitialState(): StoreState {
   return {
-    // Bandeja arranca vacía: solo se llena con conversaciones reales de WhatsApp.
+    // Bandeja arranca vacía a propósito. Corre también en el servidor (prerender
+    // del Client Component), así que no puede depender de la hora real. Se llena
+    // después, ya en el cliente: WhatsApp por wa-bridge (real) y Facebook e
+    // Instagram por SOCIAL_SEED (simulado, ver data/social-engine.ts).
     conversations: [],
     messages: [],
     contacts: [],
@@ -157,14 +175,38 @@ export function storeReducer(state: StoreState, action: StoreAction): StoreState
           c.id === action.conversationId ? { ...c, noLeidos: 0 } : c,
         ),
       };
-    case "INCOMING": {
-      const ts = tsFromSeq(state.tsSeq);
+    case "SOCIAL_SEED": {
+      // Idempotente: si el efecto corre dos veces (StrictMode), no duplica nada.
+      const idsConv = new Set(state.conversations.map((c) => c.id));
+      const idsContacto = new Set(state.contacts.map((c) => c.id));
+      const idsMsg = new Set(state.messages.map((m) => m.id));
+
+      const convsNuevas = action.conversations.filter((c) => esSocial(c) && !idsConv.has(c.id));
+      if (convsNuevas.length === 0) return state;
+
+      const idsAceptados = new Set(convsNuevas.map((c) => c.id));
+      return {
+        ...state,
+        contacts: [
+          ...state.contacts,
+          ...action.contacts.filter((c) => !idsContacto.has(c.id)),
+        ],
+        conversations: [...state.conversations, ...convsNuevas],
+        messages: [
+          ...state.messages,
+          ...action.messages.filter((m) => idsAceptados.has(m.conversationId) && !idsMsg.has(m.id)),
+        ],
+      };
+    }
+    case "SOCIAL_INCOMING": {
+      const objetivo = state.conversations.find((c) => c.id === action.conversationId);
+      if (!esSocial(objetivo)) return state; // jamas toca WhatsApp
       const msg: Message = {
-        id: `nm${state.idSeq}`,
+        id: `sm${state.idSeq}`,
         conversationId: action.conversationId,
         autor: "paciente",
         texto: action.texto,
-        ts,
+        ts: action.ts,
       };
       return {
         ...state,
@@ -173,13 +215,30 @@ export function storeReducer(state: StoreState, action: StoreAction): StoreState
           c.id === action.conversationId
             ? {
                 ...c,
-                ultimoMensajeTs: ts,
+                ultimoMensajeTs: action.ts,
                 noLeidos: c.noLeidos + 1,
                 estado: c.estado === "resuelto" ? "en_progreso" : c.estado,
               }
             : c,
         ),
-        tsSeq: state.tsSeq + 1,
+        idSeq: state.idSeq + 1,
+      };
+    }
+    case "SOCIAL_NEW_THREAD": {
+      if (!esSocial(action.conversation)) return state; // jamas crea hilos de WhatsApp
+      if (state.conversations.some((c) => c.id === action.conversation.id)) return state;
+      const msg: Message = {
+        id: `sm${state.idSeq}`,
+        conversationId: action.conversation.id,
+        autor: "paciente",
+        texto: action.texto,
+        ts: action.ts,
+      };
+      return {
+        ...state,
+        contacts: [...state.contacts, action.contact],
+        conversations: [...state.conversations, action.conversation],
+        messages: [...state.messages, msg],
         idSeq: state.idSeq + 1,
       };
     }

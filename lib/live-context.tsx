@@ -10,9 +10,10 @@ interface LiveContextValue {
 const LiveContext = createContext<LiveContextValue | null>(null);
 
 export function LiveProvider({ children }: { children: ReactNode }) {
-  // Apagado por defecto: el demo ya no inyecta mensajes simulados, solo entran
-  // los reales de WhatsApp. El usuario puede encenderlo con el toggle si quiere.
-  const [enabled, setEnabled] = useState(false);
+  // Encendido por defecto: la bandeja se siente viva al abrir la demo.
+  // OJO: este toggle solo controla la SIMULACION de Facebook e Instagram.
+  // Los mensajes de WhatsApp son reales y entran siempre, sin importar esto.
+  const [enabled, setEnabled] = useState(true);
   return (
     <LiveContext.Provider value={{ enabled, toggle: () => setEnabled((v) => !v) }}>
       {children}

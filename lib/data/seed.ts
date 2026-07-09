@@ -9,6 +9,7 @@ import type {
   InternalMessage,
   Message,
   Metric,
+  SocialLead,
   SocialPost,
   SocialStats,
   StaffUser,
@@ -196,4 +197,28 @@ export const metrics: Metric[] = [
   { label: "Tiempo de respuesta promedio", valor: "6 min", delta: -18 },
   { label: "% resueltas", valor: "82%", delta: 5 },
   { label: "Sin asignar", valor: 6, delta: 0 },
+];
+
+// --- Pool para el motor de simulacion (solo Facebook e Instagram) ---
+
+// Contactos que van abriendo hilos nuevos mientras corre la demo.
+export const socialLeads: SocialLead[] = [
+  { nombre: "Gabriela Martínez", handle: "@gaby.mart", canal: "instagram", departamento: "recepcion", texto: "Hola! Atienden sin cita previa o hay que agendar antes?" },
+  { nombre: "Lucía Hernández", handle: "Lucía Hernández", canal: "facebook", departamento: "imagenes", texto: "Buenas tardes, quisiera saber si realizan ultrasonido de mama." },
+  { nombre: "Roxana Pineda", handle: "@roxana.pineda", canal: "instagram", departamento: "ginecologia", texto: "Buenas, quiero agendar una citología. Qué días tienen disponibles?" },
+  { nombre: "Marleny Cruz", handle: "Marleny Cruz", canal: "facebook", departamento: "pediatria", texto: "Hola, mi niña tiene fiebre desde anoche. Atienden pediatría hoy?" },
+  { nombre: "Sofía Escobar", handle: "@sofi.escobar", canal: "instagram", departamento: "reproduccion", texto: "Hola, vi su publicación del centro de fertilidad. Dan consulta informativa?" },
+  { nombre: "Yesenia Portillo", handle: "Yesenia Portillo", canal: "facebook", departamento: "laboratorio", texto: "Buen día, para los exámenes de sangre hay que venir en ayunas?" },
+];
+
+// Mensajes de seguimiento que caen en hilos de FB/IG ya abiertos.
+export const socialFollowUps: string[] = [
+  "Perfecto, muchas gracias por la información.",
+  "Una consulta más, ¿atienden los sábados?",
+  "¿Y necesito llevar algún documento o solo mi DUI?",
+  "Disculpe, ¿todavía hay cupo para esta semana?",
+  "Ok, quedo atenta a su respuesta. Bendiciones.",
+  "¿Aceptan tarjeta o únicamente efectivo?",
+  "¿A qué hora abren mañana?",
+  "Gracias, ahí les escribo para confirmar.",
 ];

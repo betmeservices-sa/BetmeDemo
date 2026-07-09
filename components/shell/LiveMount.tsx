@@ -2,14 +2,14 @@
 
 import { useStore } from "@/lib/store";
 import { useLive } from "@/lib/live-context";
-import { useLiveEngine } from "@/lib/data/live-engine";
+import { useSocialEngine } from "@/lib/data/social-engine";
 import { useWhatsappBridge } from "@/lib/wa-bridge";
 
-// Punto único donde corre el motor en vivo, dentro de los providers.
+// Punto único donde corren los dos motores, dentro de los providers.
 export function LiveMount() {
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const { enabled } = useLive();
-  useLiveEngine(dispatch, enabled); // mensajes simulados (toggle del demo)
-  useWhatsappBridge(dispatch); // mensajes reales de WhatsApp (siempre)
+  useSocialEngine(state, dispatch, enabled); // Facebook e Instagram: simulados
+  useWhatsappBridge(dispatch); // WhatsApp: real, siempre
   return null;
 }

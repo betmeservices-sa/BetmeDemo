@@ -84,6 +84,21 @@ export interface InternalMessage {
 
 export type RedSocial = "facebook" | "instagram";
 
+// Canales simulados en el demo. WhatsApp queda fuera a proposito: ese canal
+// solo recibe mensajes reales (webhook de Meta Cloud API -> wa-bridge).
+export const CANALES_SOCIALES = ["instagram", "facebook"] as const;
+export type CanalSocial = (typeof CANALES_SOCIALES)[number];
+
+// Contacto que aun no existe en el seed: el motor de simulacion lo usa para
+// abrir un hilo nuevo de Facebook o Instagram durante la demo.
+export interface SocialLead {
+  nombre: string;
+  handle: string;
+  canal: CanalSocial;
+  departamento: DepartmentId;
+  texto: string; // primer mensaje del contacto
+}
+
 // Métricas por publicación, equivalentes a las que devuelve la API:
 // IG media insights (reach, likes, comments, shares, saved) y
 // FB post insights (reach, reactions, comments, shares).
